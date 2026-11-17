@@ -17,7 +17,7 @@
  * here.
  */
 
-import type { Etzhayyim } from "@etzhayyim/sdk";
+import type { LocalStore } from "../local-store.js";
 import {
   EVENT_COLLECTION,
   JOUCHO_INNER_TYPE,
@@ -49,7 +49,7 @@ const DEFAULT_MAX_SCAN = 10_000;
 
 // ─── Historical event (PLAINTEXT) ───────────────────────────────────
 
-export async function seedEvent(e: Etzhayyim, input: SeedEventInput): Promise<SeedEventOutput> {
+export async function seedEvent(e: LocalStore, input: SeedEventInput): Promise<SeedEventOutput> {
   if (!input.eventId || !input.title || !input.partition || !input.eventAt) {
     return { status: "rejected", error: "missingRequiredFields" };
   }
@@ -82,7 +82,7 @@ export async function seedEvent(e: Etzhayyim, input: SeedEventInput): Promise<Se
   return { status: "recorded", eventUri: receipt.uri, did, eventId: input.eventId };
 }
 
-export async function listEvents(e: Etzhayyim, input: ListEventsInput = {}): Promise<ListEventsOutput> {
+export async function listEvents(e: LocalStore, input: ListEventsInput = {}): Promise<ListEventsOutput> {
   const limit = Math.min(input.limit ?? 50, 200);
   const resp = await e.read<HistoricalEventRecord>({ collection: EVENT_COLLECTION, cursor: input.cursor, limit });
   const items: HistoricalEventView[] = resp.records
@@ -93,7 +93,7 @@ export async function listEvents(e: Etzhayyim, input: ListEventsInput = {}): Pro
 }
 
 /** FK helper: does a historicalEvent with the given partition exist? */
-async function partitionExists(e: Etzhayyim, partition: string, maxScan = DEFAULT_MAX_SCAN): Promise<boolean> {
+async function partitionExists(e: LocalStore, partition: string, maxScan = DEFAULT_MAX_SCAN): Promise<boolean> {
   let cursor: string | undefined;
   let scanned = 0;
   while (scanned < maxScan) {
@@ -110,7 +110,7 @@ async function partitionExists(e: Etzhayyim, partition: string, maxScan = DEFAUL
 
 // ─── Joucho assessment (E2E-ENCRYPTED, per-actor CUI) ───────────────
 
-export async function recordJoucho(e: Etzhayyim, input: RecordJouchoInput): Promise<RecordJouchoOutput> {
+export async function recordJoucho(e: LocalStore, input: RecordJouchoInput): Promise<RecordJouchoOutput> {
   if (!input.assessmentId || !input.actorDid || !input.partition || !input.mood) {
     return { status: "rejected", error: "missingRequiredFields" };
   }
@@ -144,7 +144,7 @@ export async function recordJoucho(e: Etzhayyim, input: RecordJouchoInput): Prom
   return { status: "recorded", uri: receipt.uri, keyId: receipt.keyId, assessmentId: input.assessmentId };
 }
 
-async function scanJoucho(e: Etzhayyim, maxScan: number): Promise<JouchoAssessmentView[]> {
+async function scanJoucho(e: LocalStore, maxScan: number): Promise<JouchoAssessmentView[]> {
   const out: JouchoAssessmentView[] = [];
   let cursor: string | undefined;
   while (out.length < maxScan) {
@@ -158,7 +158,7 @@ async function scanJoucho(e: Etzhayyim, maxScan: number): Promise<JouchoAssessme
   return out;
 }
 
-export async function listJoucho(e: Etzhayyim, input: ListJouchoInput = {}): Promise<ListJouchoOutput> {
+export async function listJoucho(e: LocalStore, input: ListJouchoInput = {}): Promise<ListJouchoOutput> {
   const limit = Math.min(input.limit ?? 50, 200);
   const all = await scanJoucho(e, DEFAULT_MAX_SCAN);
   const filtered = all
@@ -167,7 +167,7 @@ export async function listJoucho(e: Etzhayyim, input: ListJouchoInput = {}): Pro
   return { items: filtered.slice(0, limit), total: filtered.length };
 }
 
-export async function getJoucho(e: Etzhayyim, input: GetJouchoInput): Promise<GetJouchoOutput> {
+export async function getJoucho(e: LocalStore, input: GetJouchoInput): Promise<GetJouchoOutput> {
   if (!input.assessmentId) return { error: "invalidAssessmentId" };
   const all = await scanJoucho(e, DEFAULT_MAX_SCAN);
   const found = all.find((j) => j.assessmentId === input.assessmentId);
@@ -177,7 +177,7 @@ export async function getJoucho(e: Etzhayyim, input: GetJouchoInput): Promise<Ge
 
 // ─── Coverage rollup ────────────────────────────────────────────────
 
-export async function coverage(e: Etzhayyim, input: CoverageInput = {}): Promise<CoverageOutput> {
+export async function coverage(e: LocalStore, input: CoverageInput = {}): Promise<CoverageOutput> {
   const maxScan = Math.min(input.maxScan ?? DEFAULT_MAX_SCAN, DEFAULT_MAX_SCAN);
   const eventsByPartition: Record<string, number> = {};
   let historicalEventCount = 0;

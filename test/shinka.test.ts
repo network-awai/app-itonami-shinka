@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { MockEtzhayyim } from "@etzhayyim/sdk-mock";
+import { describe, it, beforeEach } from "node:test";
+import { expect } from "./expect.mjs";
+import { LocalStore } from "../dist/local-store.js";
 import {
   seedEvent,
   listEvents,
@@ -7,14 +8,14 @@ import {
   listJoucho,
   getJoucho,
   coverage,
-} from "../src/index.js";
+} from "../dist/domain/index.js";
 
 const OWNER = "did:web:shinka.itonami.cloud";
 
 describe("shinka kotoba (kotoba-E2E split)", () => {
   let e: any;
   beforeEach(() => {
-    e = new MockEtzhayyim({ did: OWNER });
+    e = new LocalStore({ did: OWNER });
   });
 
   describe("historicalEvent (PLAINTEXT public catalog)", () => {
@@ -58,7 +59,7 @@ describe("shinka kotoba (kotoba-E2E split)", () => {
     it("enforces read-cap: a non-recipient DID cannot decrypt the assessment", async () => {
       await recordJoucho(e, { assessmentId: "a1", actorDid: "did:web:actor1", partition: "medieval-asia", joy: 60, calm: 40, stress: 20, gratitude: 50, focus: 70, mood: "focused", summary: "private" });
       // A distinct actor (no read-cap, separate PDS view) sees zero assessments.
-      const outsider: any = new MockEtzhayyim({ did: "did:web:outsider.example" });
+      const outsider: any = new LocalStore({ did: "did:web:outsider.example" });
       expect((await listJoucho(outsider)).total).toBe(0);
     });
 

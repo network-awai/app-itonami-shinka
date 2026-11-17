@@ -1,3 +1,5 @@
+> **2026-11-17 (AWAI-3079):** この app は Tauri v3 の local app に変わりました。現在の構成とコマンドは [README.md](README.md) を見てください。Cloudflare Worker・XRPC・PDS・deploy に関する以下の記述は、以前の設計の記録で、今のコードとは一致しません。
+
 > **DEPRECATED**: Actor migrated to `orgs/itonami/com-itonami-shinka/actor-manifest.jsonld` (T1 MCP-Compose). This project wasm/*/src/app.ts is retained as T3 fallback only.
 
 # itonami-project-shinka — Actor Shinka Evolution Scheduler
