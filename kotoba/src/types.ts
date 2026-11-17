@@ -4,7 +4,7 @@
  * Per ADR-2606011400 (Consensys product-front / infra-back) + ADR-2605172400
  * (3-axis Liability/Custody/Settlement) + ADR-2605181100 (kotoba E2E encrypted
  * envelope). Founder directive 2026-06-03: PII / CUI / per-person scores migrate
- * to etzhayyim when made E2E-safe.
+ * to itonami when made E2E-safe.
  *
  * SHINKA DATA SURFACE (from CLAUDE.md + apps/shinka/*.json lexicons):
  *   Historical-propagation scheduler: seedPropagation / generatePropagationChain
@@ -21,30 +21,30 @@
  *   off it). FK: jouchoAssessment.partition references a historicalEvent
  *   partition via exists()-style membership.
  *
- *   SENSITIVE / CUI (kotoba E2E, com.etzhayyim.encrypted.record) —
+ *   SENSITIVE / CUI (kotoba E2E, cloud.itonami.encrypted.record) —
  *   jouchoAssessment: a named actor's 情緒 5-axis emotional scores (joy / calm /
  *   stress / gratitude / focus), derived mood, and free-text kyumei summary.
  *   These are per-person psychological/cognitive scores (CUI). Sealed via
  *   sdk.encryptedWrite (read-cap = owner DID, auto), so the substrate never sees
  *   an actor's affective profile in plaintext.
  *
- *   STAYS etzhayyim (NOT a collection — consumed via consent-capability) — Murakumo
+ *   STAYS itonami (NOT a collection — consumed via consent-capability) — Murakumo
  *   LLM INFERENCE execution (propagation-chain generation / kyumei drill /
  *   profile repair), credit SPEND + RewardFromCompute SETTLEMENT execution
- *   (yoro.etzhayyim.com/credits), and social-post EXECUTION (postAs actorDid).
+ *   (yoro.itonami.cloud/credits), and social-post EXECUTION (postAs actorDid).
  *   These are regulated *acts*; their resulting DATA records migrate (public →
- *   plaintext, per-actor scores → E2E), only the EXECUTION stays etzhayyim.
+ *   plaintext, per-actor scores → E2E), only the EXECUTION stays itonami.
  *
  * AT-Lexicon: no float. Joucho scores are integer 0-100; fan-out / counts are
  * non-negative integers; sponsor credit is a decimal STRING.
  */
 
 // Plaintext public collection.
-export const EVENT_COLLECTION = "com.etzhayyim.apps.shinka.historicalEvent";
+export const EVENT_COLLECTION = "cloud.itonami.apps.shinka.historicalEvent";
 // E2E inner-type NSID (body shape inside the encrypted envelope).
-export const JOUCHO_INNER_TYPE = "com.etzhayyim.apps.shinka.jouchoAssessment";
+export const JOUCHO_INNER_TYPE = "cloud.itonami.apps.shinka.jouchoAssessment";
 
-export const SHINKA_DID_PREFIX = "did:web:shinka.etzhayyim.com:" as const;
+export const SHINKA_DID_PREFIX = "did:web:shinka.itonami.cloud:" as const;
 
 // ─── Historical event (PLAINTEXT, public catalog) ───────────────────
 

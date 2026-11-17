@@ -1,4 +1,4 @@
-{:schema "etzhayyim.repository/v1"
- :name "com-etzhayyim-app-shinka"
+{:schema "itonami.repository/v1"
+ :name "app-itonami-shinka"
  :kind :app
  :canonical-metadata :edn}

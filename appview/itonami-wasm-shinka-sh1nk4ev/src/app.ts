@@ -44,7 +44,7 @@ import {
 type InternalSecret = string | { get(): Promise<string> };
 type EnvLike = { DISPATCHER_URL?: string; DISPATCHER_INTERNAL_SECRET?: InternalSecret };
 function envOf(sdk: unknown): EnvLike { return ((sdk as { env?: EnvLike }).env ?? {}) as EnvLike; }
-function dispatcherUrl(sdk: unknown): string { return envOf(sdk).DISPATCHER_URL ?? "https://dispatcher.etzhayyim.com"; }
+function dispatcherUrl(sdk: unknown): string { return envOf(sdk).DISPATCHER_URL ?? "https://dispatcher.itonami.cloud"; }
 async function internalTrustHeader(sdk: unknown): Promise<string> {
   const binding = envOf(sdk).DISPATCHER_INTERNAL_SECRET;
   if (!binding) return "";
@@ -67,7 +67,7 @@ type KyselyDb = ReturnType<typeof createKyselyDb>;
 
 let _db: KyselyDb | null = null;
 
-const SHINKA_NS = "com.etzhayyim.apps.shinka";
+const SHINKA_NS = "cloud.itonami.apps.shinka";
 const COLL_TIMELINE = `${SHINKA_NS}.timeline`;
 const COLL_HISTORICAL_EVENT = `${SHINKA_NS}.historicalEvent`;
 const COLL_PROPAGATION_EVENT = `${SHINKA_NS}.propagationEvent`;
@@ -565,7 +565,7 @@ async function llmCall(prompt: string, maxTokens = 256): Promise<string> {
   if (!murakumo) throw new Error("llmCall: MURAKUMO_SERVICE binding not available");
 
   // Step 1: fast health check via /_app/meta (reads R2 cache, no fleet probe)
-  const metaResp = await murakumo.fetch(new Request("https://murakumo.etzhayyim.com/_app/meta")).catch((e) => {
+  const metaResp = await murakumo.fetch(new Request("https://murakumo.itonami.cloud/_app/meta")).catch((e) => {
     throw new Error(`llmCall: health check failed: ${e instanceof Error ? e.message : String(e)}`);
   });
   const meta = await metaResp.json() as { fleet?: { healthPct?: number } };
@@ -588,7 +588,7 @@ async function llmCall(prompt: string, maxTokens = 256): Promise<string> {
   });
   try {
     const resp = await Promise.race([
-      murakumo.fetch(new Request("https://murakumo.etzhayyim.com/api/openai/v1/chat/completions", { method: "POST", headers, body })),
+      murakumo.fetch(new Request("https://murakumo.itonami.cloud/api/openai/v1/chat/completions", { method: "POST", headers, body })),
       timeoutProm,
     ]);
     clearTimeout(timeoutId);
@@ -712,7 +712,7 @@ function buildPropagationPrompt(event: PropagationEventRow): string {
 // ── Graph Job Queue (Hybrid Scheduler) ──
 
 /** Default Worker DID for claiming jobs. */
-const WORKER_DID = "did:web:shinka.etzhayyim.com";
+const WORKER_DID = "did:web:shinka.itonami.cloud";
 /** Claim TTL in milliseconds (5 min). */
 const CLAIM_TTL_MS = 5 * 60 * 1000;
 /** Max jobs to claim per batch. */
@@ -906,7 +906,7 @@ async function processJobQueue(sdk: HostSDK, partition?: string): Promise<{ proc
       // Credits: reward inference provider (¥0.1 per job)
       if (sponsorDid) {
         try {
-          await sdk.pds.xrpc("com.etzhayyim.apps.credits.rewardFromCompute", {
+          await sdk.pds.xrpc("cloud.itonami.apps.credits.rewardFromCompute", {
             userId: WORKER_DID, sessionId: jobId, jobsDone: 1, gpuTimeMs: 0, source: "shinka-propagation",
           });
         } catch { /* best-effort credits */ }
@@ -1080,7 +1080,7 @@ async function fetchDomainResearch(domain: string): Promise<string> {
   try {
     const query = encodeURIComponent(domain.replace(/[^a-zA-Z0-9 ]/g, " ").slice(0, 60));
     const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(domain.split(" ")[0] ?? domain)}`;
-    const resp = await globalThis.fetch(url, { headers: { "user-agent": "etzhayyim-shinka/1.0" } });
+    const resp = await globalThis.fetch(url, { headers: { "user-agent": "itonami-shinka/1.0" } });
     if (!resp.ok) return "";
     const json = await resp.json() as { extract?: string };
     return (json.extract ?? "").slice(0, 400);
@@ -1143,8 +1143,8 @@ async function handleIncomingPost(
   const postUri = `at://${commit.repo}/${commit.collection}/${commit.rkey}`;
   const postCid = commit.cid ?? "";
 
-  // Match @handle patterns that look like etzhayyim.com actor handles
-  const mentionMatches = [...postText.matchAll(/@([\w-]+\.etzhayyim\.com(?::[\w:-]+)*)/g)]
+  // Match @handle patterns that look like itonami.cloud actor handles
+  const mentionMatches = [...postText.matchAll(/@([\w-]+\.itonami\.com(?::[\w:-]+)*)/g)]
     .map((m) => m[1])
     .slice(0, 3);
 
@@ -1546,7 +1546,7 @@ Respond with JSON only — no markdown, no explanation:
         );
         const parsed = decodeJson<{ name: string; displayName: string; description: string }>(raw);
         if (parsed?.name && parsed.displayName && parsed.description) {
-          const did = `did:web:${parsed.name}.etzhayyim.com`;
+          const did = `did:web:${parsed.name}.itonami.cloud`;
           if (!registeredDids.has(did)) {
             // Generate short nanoid from random UUID
             const nanoid = crypto.randomUUID().replace(/-/g, "").slice(0, 8);
@@ -1575,22 +1575,22 @@ Respond with JSON only — no markdown, no explanation:
  * Shinka cron registers 1 per tick until all are covered.
  */
 const DOMAIN_EXPANSION_CANDIDATES: { did: string; nanoid: string; displayName: string; description: string }[] = [
-  { did: "did:web:states.etzhayyim.com", nanoid: "st4t3s01", displayName: "sovereign", description: "195 UN member states — authority-chain sovereign domain" },
-  { did: "did:web:treaty.etzhayyim.com", nanoid: "tr3aty01", displayName: "treaty", description: "International treaties and conventions" },
-  { did: "did:web:blockchain.etzhayyim.com", nanoid: "bl0ckch1", displayName: "blockchain", description: "Blockchain protocols and DAOs" },
-  { did: "did:web:religious.etzhayyim.com", nanoid: "r3lgus01", displayName: "religious", description: "Religious traditions and canon law" },
-  { did: "did:web:customary.etzhayyim.com", nanoid: "cst0m4ry", displayName: "customary", description: "Customary law and indigenous norms" },
-  { did: "did:web:communities.etzhayyim.com", nanoid: "2tqvrutp", displayName: "communities", description: "Open source and civic communities" },
-  { did: "did:web:ethics.etzhayyim.com", nanoid: "eth1cs01", displayName: "ethics", description: "Professional and academic ethics codes" },
-  { did: "did:web:industry-standard.etzhayyim.com", nanoid: "indstd01", displayName: "industry-standard", description: "ISO, PCI DSS, SOC2 industry standards" },
-  { did: "did:web:tradition.etzhayyim.com", nanoid: "trdtn001", displayName: "tradition", description: "Cultural traditions and family customs" },
-  { did: "did:web:autorace.etzhayyim.com", nanoid: "4ut0r4c3", displayName: "autorace", description: "Auto racing circuits and results" },
-  { did: "did:web:keirin.etzhayyim.com", nanoid: "k31r1njp", displayName: "keirin", description: "Keirin velodrome racing" },
-  { did: "did:web:kyotei.etzhayyim.com", nanoid: "qv8yed1k", displayName: "kyotei", description: "Boat racing venues and results" },
-  { did: "did:web:keiba.etzhayyim.com", nanoid: "k31b4jp0", displayName: "keiba", description: "Horse racing tracks and results" },
-  { did: "did:web:hanrei.etzhayyim.com", nanoid: "h4nr31jp", displayName: "hanrei", description: "Court cases and legal precedents" },
-  { did: "did:web:isco.etzhayyim.com", nanoid: "pba7d22f", displayName: "isco", description: "ISCO-08 occupation codes" },
-  { did: "did:web:isic.etzhayyim.com", nanoid: "is1c4rv4", displayName: "isic", description: "ISIC Rev.4 industry sections" },
+  { did: "did:web:states.itonami.cloud", nanoid: "st4t3s01", displayName: "sovereign", description: "195 UN member states — authority-chain sovereign domain" },
+  { did: "did:web:treaty.itonami.cloud", nanoid: "tr3aty01", displayName: "treaty", description: "International treaties and conventions" },
+  { did: "did:web:blockchain.itonami.cloud", nanoid: "bl0ckch1", displayName: "blockchain", description: "Blockchain protocols and DAOs" },
+  { did: "did:web:religious.itonami.cloud", nanoid: "r3lgus01", displayName: "religious", description: "Religious traditions and canon law" },
+  { did: "did:web:customary.itonami.cloud", nanoid: "cst0m4ry", displayName: "customary", description: "Customary law and indigenous norms" },
+  { did: "did:web:communities.itonami.cloud", nanoid: "2tqvrutp", displayName: "communities", description: "Open source and civic communities" },
+  { did: "did:web:ethics.itonami.cloud", nanoid: "eth1cs01", displayName: "ethics", description: "Professional and academic ethics codes" },
+  { did: "did:web:industry-standard.itonami.cloud", nanoid: "indstd01", displayName: "industry-standard", description: "ISO, PCI DSS, SOC2 industry standards" },
+  { did: "did:web:tradition.itonami.cloud", nanoid: "trdtn001", displayName: "tradition", description: "Cultural traditions and family customs" },
+  { did: "did:web:autorace.itonami.cloud", nanoid: "4ut0r4c3", displayName: "autorace", description: "Auto racing circuits and results" },
+  { did: "did:web:keirin.itonami.cloud", nanoid: "k31r1njp", displayName: "keirin", description: "Keirin velodrome racing" },
+  { did: "did:web:kyotei.itonami.cloud", nanoid: "qv8yed1k", displayName: "kyotei", description: "Boat racing venues and results" },
+  { did: "did:web:keiba.itonami.cloud", nanoid: "k31b4jp0", displayName: "keiba", description: "Horse racing tracks and results" },
+  { did: "did:web:hanrei.itonami.cloud", nanoid: "h4nr31jp", displayName: "hanrei", description: "Court cases and legal precedents" },
+  { did: "did:web:isco.itonami.cloud", nanoid: "pba7d22f", displayName: "isco", description: "ISCO-08 occupation codes" },
+  { did: "did:web:isic.itonami.cloud", nanoid: "is1c4rv4", displayName: "isic", description: "ISIC Rev.4 industry sections" },
 ];
 
 /** List pending shinka tasks ordered by coverage (lowest first). */
@@ -1641,7 +1641,7 @@ async function cmdStats(_sdk: HostSDK, _body: unknown): Promise<unknown> {
 
 /** Force shinka for a specific actor. */
 async function cmdForceShinka(sdk: HostSDK, body: unknown): Promise<unknown> {
-  const { did } = parseLexiconInput("com.etzhayyim.apps.shinka.forceShinka", body);
+  const { did } = parseLexiconInput("cloud.itonami.apps.shinka.forceShinka", body);
   if (!did) return { error: "did required" };
 
   // Query specific actor by DID — avoid loading all 18K actors
@@ -1706,7 +1706,7 @@ async function cmdForceShinka(sdk: HostSDK, body: unknown): Promise<unknown> {
  * Output: Timeline node + HistoricalEvent node + N PropagationEvent nodes
  */
 async function cmdSeedPropagation(sdk: HostSDK, body: unknown): Promise<unknown> {
-  const params = parseLexiconInput("com.etzhayyim.apps.shinka.seedPropagation", body);
+  const params = parseLexiconInput("cloud.itonami.apps.shinka.seedPropagation", body);
 
   if (!params.title || !params.eventAt) {
     return { error: "title and eventAt required" };
@@ -1827,9 +1827,9 @@ async function cmdSeedPropagation(sdk: HostSDK, body: unknown): Promise<unknown>
 // ── App setup ──
 
 /** Path-based DID handles for shinka capability sub-actors. */
-const ACTOR_PROJECT = "did:web:sh1nk4ev.etzhayyim.com:actor:project";
-const ACTOR_INFERENCE = "did:web:sh1nk4ev.etzhayyim.com:actor:inference";
-const ACTOR_CHAIN_OF_THOUGHT = "did:web:sh1nk4ev.etzhayyim.com:actor:chain-of-thought";
+const ACTOR_PROJECT = "did:web:sh1nk4ev.itonami.cloud:actor:project";
+const ACTOR_INFERENCE = "did:web:sh1nk4ev.itonami.cloud:actor:inference";
+const ACTOR_CHAIN_OF_THOUGHT = "did:web:sh1nk4ev.itonami.cloud:actor:chain-of-thought";
 
 export function setup(sdk: HostSDK): void {
   // Store SDK reference for llmCall (PDS_SERVICE binding, no external egress)
@@ -1838,7 +1838,7 @@ export function setup(sdk: HostSDK): void {
 
   // Register shinka capability sub-actors as path-based DIDs (idempotent, best-effort)
   // sdk.did is not yet in HostSDK; use sdk.pds identity methods when available.
-  // DIDs are pre-registered via etzhayyim CLI: did:web:sh1nk4ev.etzhayyim.com:actor:{project,inference,chain-of-thought}
+  // DIDs are pre-registered via itonami CLI: did:web:sh1nk4ev.itonami.cloud:actor:{project,inference,chain-of-thought}
   const pdsAny = sdk.pds as any;
   if (typeof pdsAny?.identityCreate === "function") {
     Promise.resolve()
@@ -1859,21 +1859,21 @@ export function setup(sdk: HostSDK): void {
       .catch((e) => console.warn("[shinka-setup] sub-actor DID registration failed:", e));
   }
 
-  sdk.app.command(nsid("com.etzhayyim.apps.shinka.listTasks"), (_ctx, body) => cmdListTasks(sdk, body));
+  sdk.app.command(nsid("cloud.itonami.apps.shinka.listTasks"), (_ctx, body) => cmdListTasks(sdk, body));
   console.log("[shinka-setup] listTasks registered");
 
-  sdk.app.command(nsid("com.etzhayyim.apps.shinka.stats"), (_ctx, body) => cmdStats(sdk, body));
+  sdk.app.command(nsid("cloud.itonami.apps.shinka.stats"), (_ctx, body) => cmdStats(sdk, body));
   console.log("[shinka-setup] stats registered");
 
-  sdk.app.command(nsid("com.etzhayyim.apps.shinka.forceShinka"), (_ctx, body) => cmdForceShinka(sdk, body));
+  sdk.app.command(nsid("cloud.itonami.apps.shinka.forceShinka"), (_ctx, body) => cmdForceShinka(sdk, body));
   console.log("[shinka-setup] forceShinka registered");
 
-  sdk.app.command(nsid("com.etzhayyim.apps.shinka.seedPropagation"), (_ctx, body) => cmdSeedPropagation(sdk, body));
+  sdk.app.command(nsid("cloud.itonami.apps.shinka.seedPropagation"), (_ctx, body) => cmdSeedPropagation(sdk, body));
   console.log("[shinka-setup] seedPropagation registered");
 
-  sdk.app.command(nsid("com.etzhayyim.apps.shinka.generatePropagationChain"), async (_ctx, body) => {
+  sdk.app.command(nsid("cloud.itonami.apps.shinka.generatePropagationChain"), async (_ctx, body) => {
     /** Generate a propagation chain for a historical event via LLM. Returns chain JSON to pass to seedPropagation. */
-    const { title, eventAt, location, description, involvedActors } = parseLexiconInput("com.etzhayyim.apps.shinka.generatePropagationChain", body);
+    const { title, eventAt, location, description, involvedActors } = parseLexiconInput("cloud.itonami.apps.shinka.generatePropagationChain", body);
     if (!title || !eventAt) return { error: "title and eventAt required" };
 
     const names = (involvedActors ?? []).map(a => a.name).join(", ");
@@ -1893,13 +1893,13 @@ export function setup(sdk: HostSDK): void {
   });
 
   // Job Queue commands
-  sdk.app.command(nsid("com.etzhayyim.apps.shinka.claimJobs"), async (_ctx, body) => {
+  sdk.app.command(nsid("cloud.itonami.apps.shinka.claimJobs"), async (_ctx, body) => {
     /** Claim and process pending jobs from the graph job queue. */
-    const { partition, batchSize } = parseLexiconInput("com.etzhayyim.apps.shinka.claimJobs", body);
+    const { partition, batchSize } = parseLexiconInput("cloud.itonami.apps.shinka.claimJobs", body);
     return processJobQueue(sdk, partition);
   });
 
-  sdk.app.command(nsid("com.etzhayyim.apps.shinka.queueStats"), async () => {
+  sdk.app.command(nsid("cloud.itonami.apps.shinka.queueStats"), async () => {
     /** Get job queue statistics per status. */
     const jobs = await listOtherRows(COLL_PROPAGATION_JOB).catch(() => []);
     const counts = new Map<string, number>();
@@ -1911,9 +1911,9 @@ export function setup(sdk: HostSDK): void {
   });
 
   // Credits integration commands
-  sdk.app.command(nsid("com.etzhayyim.apps.shinka.sponsorEvent"), async (_ctx, body) => {
+  sdk.app.command(nsid("cloud.itonami.apps.shinka.sponsorEvent"), async (_ctx, body) => {
     /** Spend credits to sponsor a historical event's propagation (priority boost). */
-    const { userId, eventId, credits } = parseLexiconInput("com.etzhayyim.apps.shinka.sponsorEvent", body);
+    const { userId, eventId, credits } = parseLexiconInput("cloud.itonami.apps.shinka.sponsorEvent", body);
     if (!userId || !eventId) return { error: "userId and eventId required" };
     const amount = credits ?? 10;
 
@@ -1923,7 +1923,7 @@ export function setup(sdk: HostSDK): void {
 
     // Spend credits via credits-mcp
     try {
-      await sdk.pds.xrpc("com.etzhayyim.apps.credits.spendCredits", {
+      await sdk.pds.xrpc("cloud.itonami.apps.credits.spendCredits", {
         userId, amount, action: "sponsor_propagation", description: `Sponsor: ${String(rowField(evt, "title") ?? eventId)}`,
       });
     } catch (e) {
@@ -1947,9 +1947,9 @@ export function setup(sdk: HostSDK): void {
     return { ok: true, eventId, title: String(rowField(evt, "title") ?? eventId), creditSpent: amount, userId };
   });
 
-  sdk.app.command(nsid("com.etzhayyim.apps.shinka.listSponsorable"), async (_ctx, body) => {
+  sdk.app.command(nsid("cloud.itonami.apps.shinka.listSponsorable"), async (_ctx, body) => {
     /** List historical events available for sponsorship. */
-    const { limit } = parseLexiconInput("com.etzhayyim.apps.shinka.listSponsorable", body);
+    const { limit } = parseLexiconInput("cloud.itonami.apps.shinka.listSponsorable", body);
     try {
       return (await listOtherRows(COLL_HISTORICAL_EVENT).catch(() => []))
         .map((row) => ({
@@ -1965,7 +1965,7 @@ export function setup(sdk: HostSDK): void {
     }
   });
 
-  sdk.app.command(nsid("com.etzhayyim.apps.shinka.listPartitions"), async () => {
+  sdk.app.command(nsid("cloud.itonami.apps.shinka.listPartitions"), async () => {
     /** List active partitions with job counts. */
     try {
       const jobs = await listOtherRows(COLL_PROPAGATION_JOB).catch(() => []);
@@ -2013,10 +2013,10 @@ export function setup(sdk: HostSDK): void {
     }
   });
 
-  // Cron handler — delegates to LangServer batchTick.bpmn (com.etzhayyim.shinka.tick × 10 actors).
+  // Cron handler — delegates to LangServer batchTick.bpmn (cloud.itonami.shinka.tick × 10 actors).
   // Heavy work: 10 actors × up to 3 LLM calls each exceeds CF Worker 25s budget (ADR-0056).
   sdk.app.onHeartbeat(async () => {
-    await proxyToBpmn(sdk, "com.etzhayyim.apps.shinka.batchTick", {});
+    await proxyToBpmn(sdk, "cloud.itonami.apps.shinka.batchTick", {});
     return [];
   });
 }
@@ -2025,5 +2025,5 @@ export default createWorkerExport((sdk) => {
   setup(sdk);
 });
 
-/** Legacy alias for etzhayyim deploy entry generation. */
+/** Legacy alias for itonami deploy entry generation. */
 export { createDefaultHostSDK as createComponentHostSDK } from "@etzhayyim/kotodama-host-sdk";

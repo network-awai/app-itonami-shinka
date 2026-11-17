@@ -1,5 +1,5 @@
 {
-  "name": "etzhayyim-wasm-shinka-sh1nk4ev",
+  "name": "itonami-wasm-shinka-sh1nk4ev",
   "private": true,
   "dependencies": {
     "@etzhayyim/kotodama-host-sdk": "workspace:*"
