@@ -1,4 +1,4 @@
-{:schema "etzhayyim.migration/v1"
- :source {:repository "etzhayyim/root" :revision "c9e7df4b327a3ee7b5ed25fb3480db45553c33ed" :path "60-apps/etzhayyim-project-shinka" :tree "30f6eaaec063136ed466f77962e420fd84886efd" :tracked-files 12 :bytes 110376}
- :destination {:repository "etzhayyim/com-etzhayyim-app-shinka"}
+{:schema "itonami.migration/v1"
+ :source {:repository "itonami/root" :revision "c9e7df4b327a3ee7b5ed25fb3480db45553c33ed" :path "60-apps/itonami-project-shinka" :tree "30f6eaaec063136ed466f77962e420fd84886efd" :tracked-files 12 :bytes 110376}
+ :destination {:repository "itonami/app-itonami-shinka"}
  :identity {:allowed-additions ["README.edn" "migration.edn"]}}

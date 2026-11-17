@@ -1,13 +1,13 @@
-> **DEPRECATED**: Actor migrated to `orgs/etzhayyim/com-etzhayyim-shinka/actor-manifest.jsonld` (T1 MCP-Compose). This project wasm/*/src/app.ts is retained as T3 fallback only.
+> **DEPRECATED**: Actor migrated to `orgs/itonami/com-itonami-shinka/actor-manifest.jsonld` (T1 MCP-Compose). This project wasm/*/src/app.ts is retained as T3 fallback only.
 
-# etzhayyim-project-shinka — Actor Shinka Evolution Scheduler
+# itonami-project-shinka — Actor Shinka Evolution Scheduler
 
-**shinka.etzhayyim.com** — 全 logical actor の社会進化を統括する scheduler Worker。
+**shinka.itonami.cloud** — 全 logical actor の社会進化を統括する scheduler Worker。
 
 ## Architecture
 
 ```
-PDS cron (*/5 min) → shinka.etzhayyim.com Worker
+PDS cron (*/5 min) → shinka.itonami.cloud Worker
   │
   ├─ 1. Query stalest actors (SQL)
   │    MATCH (a:Actor {status:"active"})
@@ -79,7 +79,7 @@ seedPropagation({title, eventAt, ...})
 | `claimExpiresAt` | TTL 5min (expired → pending に戻る) |
 | `sponsorDid` | Credits スポンサー (priority boost) |
 
-### Credits 統合 (yoro.etzhayyim.com/credits)
+### Credits 統合 (yoro.itonami.cloud/credits)
 
 - **スポンサー**: `sponsorEvent` → SpendCredits → priority -40 → 最優先投稿
 - **推論報酬**: job 完了 → RewardFromCompute → ¥0.1/job credits
@@ -97,15 +97,15 @@ seedPropagation({title, eventAt, ...})
 
 ## LLM Backend
 
-**Murakumo fleet** (`murakumo.etzhayyim.com/api/openai/v1/chat/completions`, qwen3.5-4b)。on-prem, ¥0 cost。
+**Murakumo fleet** (`murakumo.itonami.cloud/api/openai/v1/chat/completions`, qwen3.5-4b)。on-prem, ¥0 cost。
 
 ## Key Files
 
 | File | Role |
 |---|---|
-| `wasm/etzhayyim-wasm-shinka-sh1nk4ev/src/app.ts` | Scheduler Worker (cron + commands) |
-| `wasm/etzhayyim-wasm-shinka-sh1nk4ev/kotodama.jsonld` | App config (nanoid: sh1nk4ev) |
-| `wasm/etzhayyim-wasm-shinka-sh1nk4ev/wrangler.jsonc` | CF Worker config (cron */5 min) |
+| `wasm/itonami-wasm-shinka-sh1nk4ev/src/app.ts` | Scheduler Worker (cron + commands) |
+| `wasm/itonami-wasm-shinka-sh1nk4ev/kotodama.jsonld` | App config (nanoid: sh1nk4ev) |
+| `wasm/itonami-wasm-shinka-sh1nk4ev/wrangler.jsonc` | CF Worker config (cron */5 min) |
 
 ## Rules
 

@@ -1,6 +1,6 @@
 {
-  "@context": "https://etzhayyim.com/ns/kotodama/v1",
-  "@id": "did:web:shinka.etzhayyim.com",
+  "@context": "https://itonami.cloud/ns/kotodama/v1",
+  "@id": "did:web:shinka.itonami.cloud",
   "nanoid": "sh1nk4ev",
   "name": "shinka",
   "description": "Actor Shinka Scheduler — joucho cadence + kyumei-koji + social evolution for all logical actors",
@@ -11,7 +11,7 @@
     "raci": "responsible",
     "classification": "internal",
     "complianceFrameworks": [
-      "etzhayyim-platform-policy"
+      "itonami-platform-policy"
     ]
   },
   "profile": {
@@ -20,7 +20,7 @@
     "avatar": "進",
     "category": "platform",
     "agentType": "autonomous",
-    "operator": "etzhayyim.com",
+    "operator": "itonami.cloud",
     "capabilities": [
       "actor-evolution",
       "joucho-cadence",
@@ -33,8 +33,8 @@
     "cron": "*/5 * * * *",
     "subscribeRepos": {
       "collections": [
-        "com.etzhayyim.apps.shinka.kyumeiResult",
-        "com.etzhayyim.apps.shinka.shinkaEvolution"
+        "cloud.itonami.apps.shinka.kyumeiResult",
+        "cloud.itonami.apps.shinka.shinkaEvolution"
       ]
     }
   }

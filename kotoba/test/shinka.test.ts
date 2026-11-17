@@ -9,7 +9,7 @@ import {
   coverage,
 } from "../src/index.js";
 
-const OWNER = "did:web:shinka.etzhayyim.com";
+const OWNER = "did:web:shinka.itonami.cloud";
 
 describe("shinka kotoba (kotoba-E2E split)", () => {
   let e: any;
