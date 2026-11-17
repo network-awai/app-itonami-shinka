@@ -33,8 +33,8 @@ function readField(field, form) {
   return raw;
 }
 
-function fieldControl(field) {
-  const common = { name: field.name, id: `f-${field.name}`, required: !!field.required };
+function fieldControl(action, field) {
+  const common = { name: field.name, id: `f-${action.name}-${field.name}`, required: !!field.required };
   if (field.type === "textarea" || field.type === "json" || field.type === "list") return el("textarea", { ...common, rows: field.rows ?? 3, placeholder: field.placeholder ?? "" });
   if (field.type === "select") return el("select", common, ...(field.required ? [] : [el("option", { value: "" }, "—")]), ...field.options.map((o) => el("option", { value: o }, o)));
   if (field.type === "checkbox") return el("input", { ...common, type: "checkbox", required: false });
@@ -50,15 +50,17 @@ async function runAction(action, form) {
   } catch (error) {
     ui.error = error?.message ?? String(error);
   }
-  render();
+  // Only the result panel changes: the forms keep what was typed.
+  renderNotice();
+  document.getElementById("notice").scrollIntoView({ block: "nearest" });
 }
 
 function actionCard(action) {
   const form = el("form", { class: "card", onsubmit: (ev) => { ev.preventDefault(); runAction(action, form); } },
     el("h3", {}, action.label),
     action.help ? el("p", { class: "muted" }, action.help) : null,
-    ...action.fields.map((field) => el("label", { for: `f-${field.name}` },
-      el("span", {}, field.label + (field.required ? " *" : "")), fieldControl(field))),
+    ...action.fields.map((field) => el("label", { for: `f-${action.name}-${field.name}` },
+      el("span", {}, field.label + (field.required ? " *" : "")), fieldControl(action, field))),
     el("button", { type: "submit" }, "実行"));
   return form;
 }
@@ -102,13 +104,17 @@ function render() {
   document.getElementById("title").textContent = app.title;
   const tabs = document.getElementById("tabs");
   tabs.replaceChildren(...TABS.map(([id, label]) => el("button", { type: "button", role: "tab", "aria-selected": ui.tab === id ? "true" : "false", onclick: () => { ui.tab = id; render(); } }, label)));
-  const notice = document.getElementById("notice");
-  const saveError = !local ? "この環境では保存できません。記録はこの画面を閉じると消えます。" : store.lastSaveError ? "保存に失敗しました: " + store.lastSaveError.message : null;
-  notice.replaceChildren(...[saveError ? el("div", { class: "notice error" }, saveError) : null, resultPanel()].filter(Boolean));
+  renderNotice();
   const view = document.getElementById("view");
   if (ui.tab === "actions") view.replaceChildren(el("div", { class: "grid" }, ...app.actions.map(actionCard)));
   else if (ui.tab === "records") view.replaceChildren(recordsView());
   else view.replaceChildren(aboutView());
+}
+
+function renderNotice() {
+  const notice = document.getElementById("notice");
+  const saveError = !local ? "この環境では保存できません。記録はこの画面を閉じると消えます。" : store.lastSaveError ? "保存に失敗しました: " + store.lastSaveError.message : null;
+  notice.replaceChildren(...[saveError ? el("div", { class: "notice error" }, saveError) : null, resultPanel()].filter(Boolean));
 }
 
 render();
