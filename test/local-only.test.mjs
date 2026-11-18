@@ -86,16 +86,68 @@ test("the local store round-trips through storage and replaces on rewrite", asyn
   await assert.rejects(failing.write({ collection: "c", record: {}, rkey: "x" }), /local save failed/);
 });
 
-test("sealed records are returned only to dids in their read-cap", async () => {
+test("sealed records are encrypted and returned only to dids in their read-cap", async () => {
   const { LocalStore } = await import(resolve(root, "dist/local-store.js"));
   const mem = new Map();
   const storage = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, v) };
-  const owner = new LocalStore({ did: "did:example:owner", storage, key: "s" });
-  const r = await owner.encryptedWrite({ innerType: "t.secret", record: { x: 1 }, recipients: ["did:example:friend"], rkey: "a" });
+  const opts = { storage, key: "s", sealIterations: 1000 };
+  const owner = new LocalStore({ did: "did:example:owner", ...opts });
+  assert.equal(owner.sealedState(), "none");
+  assert.deepEqual(await owner.encryptedRead({ innerType: "t.secret" }), { records: [] });
+  await assert.rejects(owner.encryptedWrite({ innerType: "t.secret", record: { x: 1 } }), (e) => e.code === "SEALED_NONE");
+  await assert.rejects(owner.setupSealKey("short"), (e) => e.code === "SEALED_WEAK_PASSPHRASE");
+  await owner.setupSealKey("correct horse battery");
+  assert.equal(owner.sealedState(), "unlocked");
+  const r = await owner.encryptedWrite({ innerType: "t.secret", record: { x: 1, note: "very-private-text" }, recipients: ["did:example:friend"], rkey: "a" });
   assert.ok(r.keyId);
-  assert.equal((await owner.encryptedRead({ innerType: "t.secret" })).records[0].value.x, 1);
-  const friend = new LocalStore({ did: "did:example:friend", storage, key: "s" });
-  assert.equal((await friend.encryptedRead({ innerType: "t.secret" })).records.length, 1);
-  const outsider = new LocalStore({ did: "did:example:other", storage, key: "s" });
+  assert.equal((await owner.encryptedRead({ innerType: "t.secret" })).records[0].value.note, "very-private-text");
+  // Nothing persisted holds the plaintext or the raw key.
+  const persisted = mem.get("s");
+  assert.ok(!persisted.includes("very-private-text"));
+  assert.ok(!persisted.includes("correct horse"));
+  assert.match(persisted, /"alg":"A256GCM"/);
+
+  // Another store on the same storage starts locked; a wrong passphrase fails.
+  const friend = new LocalStore({ did: "did:example:friend", ...opts });
+  assert.equal(friend.sealedState(), "locked");
+  await assert.rejects(friend.encryptedRead({ innerType: "t.secret" }), (e) => e.code === "SEALED_LOCKED");
+  await assert.rejects(friend.unlockSealed("wrong passphrase"), (e) => e.code === "SEALED_BAD_PASSPHRASE");
+  await friend.unlockSealed("correct horse battery");
+  assert.equal((await friend.encryptedRead({ innerType: "t.secret" })).records[0].value.x, 1);
+  const outsider = new LocalStore({ did: "did:example:other", ...opts });
+  await outsider.unlockSealed("correct horse battery");
   assert.equal((await outsider.encryptedRead({ innerType: "t.secret" })).records.length, 0);
+
+  // Editing the readable metadata (here: adding a did to the read-cap) breaks decryption.
+  const data = JSON.parse(mem.get("s"));
+  data.collections["sealed:t.secret"].a.value.readCap.push("did:example:other");
+  mem.set("s", JSON.stringify(data));
+  const tampered = new LocalStore({ did: "did:example:other", ...opts });
+  await tampered.unlockSealed("correct horse battery");
+  await assert.rejects(tampered.encryptedRead({ innerType: "t.secret" }), (e) => e.code === "SEALED_CORRUPT");
+
+  // Lock drops the key; changing the passphrase keeps the records readable.
+  owner.lockSealed();
+  assert.equal(owner.sealedState(), "locked");
+  await owner.unlockSealed("correct horse battery");
+  await owner.changeSealPassphrase("correct horse battery", "new passphrase 2");
+  const later = new LocalStore({ did: "did:example:owner", ...opts });
+  await assert.rejects(later.unlockSealed("correct horse battery"), (e) => e.code === "SEALED_BAD_PASSPHRASE");
+  await later.unlockSealed("new passphrase 2");
+  // (owner's save rewrote the untampered record from its memory)
+  assert.equal((await later.encryptedRead({ innerType: "t.secret" })).records[0].value.x, 1);
+  later.clear();
+  assert.equal(later.sealedState(), "none");
+});
+
+test("plaintext sealed records from the read-cap-only version are encrypted on setup", async () => {
+  const { LocalStore } = await import(resolve(root, "dist/local-store.js"));
+  const legacy = { schema: "itonami.local-store.v1", collections: { "sealed:t.secret": { a: { cid: null, value: { sender: "did:example:owner", readCap: ["did:example:owner"], keyId: "x", createdAt: "2026-11-01T00:00:00.000Z", value: { note: "old-plaintext" } } } } } };
+  const mem = new Map([["s", JSON.stringify(legacy)]]);
+  const storage = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, v) };
+  const store = new LocalStore({ did: "did:example:owner", storage, key: "s", sealIterations: 1000 });
+  await assert.rejects(store.encryptedRead({ innerType: "t.secret" }), (e) => e.code === "SEALED_NONE");
+  await store.setupSealKey("migrate passphrase");
+  assert.ok(!mem.get("s").includes("old-plaintext"));
+  assert.equal((await store.encryptedRead({ innerType: "t.secret" })).records[0].value.note, "old-plaintext");
 });
