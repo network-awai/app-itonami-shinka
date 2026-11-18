@@ -6,13 +6,15 @@
   "itonami": {
     "id": "cloud.itonami.shinka",
     "title": "Shinka",
-    "storageKey": "itonami.shinka.v1"
+    "storageKey": "itonami.shinka.v1",
+    "storeId": "network.itonami.shinka"
   },
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "npm run build && node --test test/*.test.mjs test/*.test.ts",
     "tauri": "tauri",
-    "build:desktop": "npm run build && tauri build --no-bundle"
+    "build:desktop": "npm run build && tauri build --no-bundle",
+    "build:android": "sh scripts/android-apk.sh"
   },
   "devDependencies": {
     "@tauri-apps/cli": "3.0.0-alpha.6"
