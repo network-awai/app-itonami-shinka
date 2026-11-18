@@ -7,9 +7,10 @@ export const app = {
   description: "進化 — 歴史上の出来事のカタログと、actor ごとの情緒（joucho）の評価を記録します。推論・クレジット精算・投稿の実行は含みません。",
   did: "did:web:shinka.itonami.cloud",
   storageKey: "itonami.shinka.v1",
+  sealed: true,
   collections: [
     { name: "cloud.itonami.apps.shinka.historicalEvent", label: "historicalEvent" },
-    { name: "sealed:cloud.itonami.apps.shinka.jouchoAssessment", label: "情緒の評価（read-cap つき、平文で保存）" },
+    { name: "sealed:cloud.itonami.apps.shinka.jouchoAssessment", label: "情緒の評価（暗号化して保存、read-cap つき）" },
   ],
   actions: [
     { name: "seedEvent", label: "出来事を登録 (seedEvent)",

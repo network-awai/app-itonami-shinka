@@ -48,11 +48,73 @@ async function runAction(action, form) {
     for (const field of action.fields) { const v = readField(field, form); if (v !== undefined) input[field.name] = v; }
     ui.result = { action: action.label, output: await action.run(store, input) };
   } catch (error) {
-    ui.error = error?.message ?? String(error);
+    ui.error = messageOf(error);
   }
   // Only the result panel changes: the forms keep what was typed.
   renderNotice();
   document.getElementById("notice").scrollIntoView({ block: "nearest" });
+}
+
+// Passphrase panel for apps with sealed (encrypted) records. The passphrase is
+// only passed to the store, which derives the key on this device.
+const SEALED_MESSAGES = {
+  SEALED_LOCKED: "封をした記録は鍵がかかっています。上でパスフレーズを入力して開いてください。",
+  SEALED_NONE: "封をした記録を使うには、先にパスフレーズを設定してください。",
+  SEALED_BAD_PASSPHRASE: "パスフレーズが違います。",
+  SEALED_WEAK_PASSPHRASE: "パスフレーズは 8 文字以上にしてください。",
+  SEALED_CORRUPT: "封をした記録を復号できませんでした（書き換えられたか、別の鍵の記録です）。",
+  SEALED_UNAVAILABLE: "この環境では暗号化が使えないため、封をした記録は扱えません。",
+};
+const messageOf = (error) => SEALED_MESSAGES[error?.code] ?? error?.message ?? String(error);
+
+async function sealedStep(fn) {
+  ui.error = null; ui.result = null;
+  try { ui.result = { action: "封をした記録", output: await fn() }; } catch (error) { ui.error = messageOf(error); }
+  render();
+}
+
+function passField(name, label, autocomplete) {
+  const id = `seal-${name}`;
+  return el("label", { for: id }, el("span", {}, label), el("input", { id, name, type: "password", autocomplete, required: true, minlength: 8 }));
+}
+
+function sealPanel() {
+  const state = store.sealedState();
+  const value = (form, name) => form.elements.namedItem(name).value;
+  if (state === "unlocked") {
+    const form = el("form", { class: "card seal", onsubmit: (ev) => {
+      ev.preventDefault();
+      if (value(form, "next") !== value(form, "next2")) { ui.error = "新しいパスフレーズが一致しません。"; renderNotice(); return; }
+      sealedStep(() => store.changeSealPassphrase(value(form, "current"), value(form, "next")));
+    } },
+      el("h3", {}, "封をした記録: 開いています"),
+      el("p", { class: "muted" }, "この画面を閉じるか「鍵をかける」を押すまで、封をした記録を読み書きできます。"),
+      el("button", { type: "button", onclick: () => { store.lockSealed(); ui.result = null; ui.error = null; render(); } }, "鍵をかける"),
+      el("details", {}, el("summary", {}, "パスフレーズを変える"),
+        passField("current", "今のパスフレーズ", "current-password"),
+        passField("next", "新しいパスフレーズ", "new-password"),
+        passField("next2", "新しいパスフレーズ（確認）", "new-password"),
+        el("button", { type: "submit" }, "変える")));
+    return form;
+  }
+  if (state === "locked") {
+    const form = el("form", { class: "card seal", onsubmit: (ev) => { ev.preventDefault(); sealedStep(() => store.unlockSealed(value(form, "pass"))); } },
+      el("h3", {}, "封をした記録: 鍵がかかっています"),
+      passField("pass", "パスフレーズ", "current-password"),
+      el("button", { type: "submit" }, "開く"));
+    return form;
+  }
+  const form = el("form", { class: "card seal", onsubmit: (ev) => {
+    ev.preventDefault();
+    if (value(form, "pass") !== value(form, "pass2")) { ui.error = "パスフレーズが一致しません。"; renderNotice(); return; }
+    sealedStep(() => store.setupSealKey(value(form, "pass")));
+  } },
+    el("h3", {}, "封をした記録のパスフレーズを決める"),
+    el("p", { class: "muted" }, "封をした記録は、このパスフレーズから作る鍵で暗号化して保存します。パスフレーズを忘れると、封をした記録は誰にも読めなくなります。"),
+    passField("pass", "パスフレーズ（8 文字以上）", "new-password"),
+    passField("pass2", "パスフレーズ（確認）", "new-password"),
+    el("button", { type: "submit" }, "設定する"));
+  return form;
 }
 
 function actionCard(action) {
@@ -87,6 +149,7 @@ function aboutView() {
     el("h3", {}, app.title),
     el("p", {}, app.description),
     el("p", { class: "muted" }, "データはこの端末の中だけに保存されます（localStorage）。外部への通信はしません。"),
+    app.sealed ? el("p", { class: "muted" }, "封をした記録は AES-GCM で暗号化して保存します。鍵はパスフレーズから PBKDF2 で作る鍵で包んで保存し、開いている間だけメモリに置きます。") : null,
     el("p", { class: "muted mono" }, app.did),
     // Two-step reset instead of window.confirm(), which some OS WebViews do not show.
     el("button", { type: "button", class: "danger", onclick: () => {
@@ -94,7 +157,7 @@ function aboutView() {
       ui.armReset = false;
       try { store.clear(); ui.result = null; ui.error = null; } catch (e) { ui.error = e.message; }
       render();
-    } }, ui.armReset ? "もう一度押すと、この端末の記録をすべて消します" : "記録をすべて消す"));
+    } }, ui.armReset ? app.sealed ? "もう一度押すと、この端末の記録と封の鍵をすべて消します" : "もう一度押すと、この端末の記録をすべて消します" : "記録をすべて消す"));
 }
 
 const TABS = [["actions", "操作"], ["records", "記録"], ["about", "このアプリ"]];
@@ -106,7 +169,7 @@ function render() {
   tabs.replaceChildren(...TABS.map(([id, label]) => el("button", { type: "button", role: "tab", "aria-selected": ui.tab === id ? "true" : "false", onclick: () => { ui.tab = id; render(); } }, label)));
   renderNotice();
   const view = document.getElementById("view");
-  if (ui.tab === "actions") view.replaceChildren(el("div", { class: "grid" }, ...app.actions.map(actionCard)));
+  if (ui.tab === "actions") view.replaceChildren(...(app.sealed ? [sealPanel()] : []), el("div", { class: "grid" }, ...app.actions.map(actionCard)));
   else if (ui.tab === "records") view.replaceChildren(recordsView());
   else view.replaceChildren(aboutView());
 }

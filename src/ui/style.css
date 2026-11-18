@@ -24,3 +24,7 @@ ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: col
 li { border-top: 1px solid var(--line); padding-top: 6px; }
 .muted { color: var(--muted); margin: 0; }
 .mono, code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; word-break: break-all; }
+.seal { margin-bottom: 14px; border-color: var(--accent); }
+.seal details { display: flex; flex-direction: column; gap: 8px; }
+.seal details > label, .seal details > button { margin-top: 8px; }
+.seal summary { cursor: pointer; }

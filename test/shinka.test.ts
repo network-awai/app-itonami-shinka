@@ -14,8 +14,9 @@ const OWNER = "did:web:shinka.itonami.cloud";
 
 describe("shinka kotoba (kotoba-E2E split)", () => {
   let e: any;
-  beforeEach(() => {
-    e = new LocalStore({ did: OWNER });
+  beforeEach(async () => {
+    e = new LocalStore({ did: OWNER, sealIterations: 1000 });
+    await e.setupSealKey("test passphrase");
   });
 
   describe("historicalEvent (PLAINTEXT public catalog)", () => {
