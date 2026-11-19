@@ -1,0 +1,8 @@
+;; The static build and domain suite use the runner's pinned Node toolchain.
+;; This job does not install npm packages or build an Android APK.
+{:tier :t2
+ :network :none
+ :quorum 2
+ :timeout-seconds 180
+ :steps [["npm" "test"]]
+ :artifacts []}
